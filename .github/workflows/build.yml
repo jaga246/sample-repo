@@ -18,7 +18,7 @@ jobs:
       uses: actions/setup-java@v3
       with:
         distribution: 'temurin' # Specify the Java distribution (e.g., 'temurin', 'zulu', 'adopt')
-        java-version: '11'      # Specify the Java version
+        java-version: '17'      # Specify the Java version
 
     - name: Build APK
       run: ./gradlew assembleRelease
