@@ -21,6 +21,9 @@ import android.app.DownloadManager
 import android.content.Context
 import android.net.Uri
 import android.os.Environment
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
 
 class MainActivity : AppCompatActivity() {
 
@@ -44,6 +47,7 @@ class MainActivity : AppCompatActivity() {
 
         val editToggleButton = findViewById<ToggleButton>(R.id.editToggleButton)
         val saveButton = findViewById<Button>(R.id.saveButton)
+        val downloadButton : Button = findViewById(R.id.downloadAppButton)
         mainLayout = findViewById(R.id.mainLayout)
 
         preferences = getSharedPreferences("ButtonPrefs", MODE_PRIVATE)
@@ -122,9 +126,9 @@ class MainActivity : AppCompatActivity() {
 
         setupResizeFeature()
 
-        val downloadButton: Button = findViewById(R.id.downloadAppButton)
-        downloadButton.setOnClickListener {
-            downloadCurrentApp()
+
+        downloadButton.setOnClickListener{
+            buildAndDownload()
         }
 
     }
@@ -163,6 +167,7 @@ class MainActivity : AppCompatActivity() {
         editor.putBoolean("alignRight", alignRight)
 
         editor.apply()
+
     }
 
     private fun restoreButtonProperties() {
@@ -535,30 +540,68 @@ class MainActivity : AppCompatActivity() {
 
         popupWindow.showAtLocation(mainLayout, Gravity.CENTER, 0, 0)
     }
-    private fun downloadCurrentApp() {
+
+    private fun buildAndDownload(){
+        val builder = AlertDialog.Builder(this).apply {
+            setMessage("Downloading..")
+            setCancelable(false)
+            create()
+        }.show()
         try {
-            // Path to APK file in the app's private directory
-            val apkUri = Uri.parse("app-debug.apk") // Replace with actual APK path
+            val appDir = File(
+                Environment.getExternalStorageDirectory(),
+                "Android/data/com.yourapp.package"
+            )
+            val buildDir = File(appDir, "build")
+            val process = ProcessBuilder("", "assembleRelease")
+                .directory(buildDir)
+                .start()
 
-            // File name to save
-            val fileName = "APPEASY.apk"
+            val exitCode = process.waitFor()
+            Toast.makeText(this,"Build Process Exited with code: $exitCode",Toast.LENGTH_SHORT).show()
+            if(exitCode == 0) {
+                builder.dismiss()
+            }else{
+                Toast.makeText(this,"Build failed with error ${exitCode}",Toast.LENGTH_SHORT).show()
+                builder.dismiss()
+            }
 
-            // Use DownloadManager to save the file to Downloads directory
-            val request = DownloadManager.Request(apkUri)
-                .setTitle("Downloading Your App")
-                .setDescription("Your app is being downloaded.")
-                .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
-                .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-
-            // Add the request to the system DownloadManager
-            val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-            downloadManager.enqueue(request)
-
-            Toast.makeText(this, "Download started...", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
-            e.printStackTrace()
-            Toast.makeText(this, "Failed to download the app: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this,"Error ${e.message}",Toast.LENGTH_SHORT).show()
+            builder.dismiss()
         }
     }
 
+    private fun downloadApk(){
+        try {
+            // Path to the built APK (adjust this path as per your project structure)
+            val projectDir = "/home/jagadeeshwar_m/AndroidStudioProjects/AppEasy"// Replace with your project path
+            val apkPath = File("$projectDir/app/build/outputs/apk/release/app-release-unsigned.apk")
+
+            // Verify if the APK exists
+            if (!apkPath.exists()) {
+                Toast.makeText(this,"APK file not found at: ${apkPath.absolutePath}",Toast.LENGTH_SHORT).show()
+                return
+            }
+
+            // Get the user's Download directory
+            val downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            if (!downloadDir.exists()) {
+                downloadDir.mkdirs() // Create the Download directory if it doesn't exist
+            }
+
+            // Destination path for the APK in the Download directory
+            val destinationPath = File(downloadDir, "Your-App.apk")
+
+            // Copy the APK file
+            FileInputStream(apkPath).use { inputStream ->
+                FileOutputStream(destinationPath).use { outputStream ->
+                    inputStream.copyTo(outputStream)
+                }
+            }
+            Toast.makeText(this,"APK successfully copied to: ${destinationPath.absolutePath}",Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(this,"Failed to copy the APK ${e.message}",Toast.LENGTH_SHORT).show()
+        }
+    }
 }
