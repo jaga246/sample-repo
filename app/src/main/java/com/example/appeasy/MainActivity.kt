@@ -82,13 +82,11 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, "Edit mode disabled", Toast.LENGTH_SHORT).show()
             }
         }
-        //hello
 
         saveButton.setOnClickListener {
             saveButtonProperties()
             Toast.makeText(this, "Changes saved", Toast.LENGTH_SHORT).show()
         }
-
 
         var lastClickTime: Long = 0
 
